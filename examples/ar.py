@@ -3,7 +3,7 @@ import warnings
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 import pandas as pd
-from pandas.core.common import SettingWithCopyWarning
+from pandas.errors import SettingWithCopyWarning
 import torch
 
 from pytorch_forecasting import GroupNormalizer, TimeSeriesDataSet
@@ -113,7 +113,7 @@ trainer.fit(
     val_dataloaders=val_dataloader,
 )
 
-# calcualte mean absolute error on validation set
+# calculate mean absolute error on validation set
 actuals = torch.cat([y for x, (y, weight) in iter(val_dataloader)])
 predictions = deepar.predict(val_dataloader)
 print(f"Mean absolute error of model: {(actuals - predictions).abs().mean()}")

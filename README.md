@@ -23,8 +23,8 @@ Specifically, the package provides
 
 - A timeseries dataset class which abstracts handling variable transformations, missing values,
   randomized subsampling, multiple history lengths, etc.
-- A base model class which provides basic training of timeseries models along with logging in tensorboard
-  and generic visualizations such actual vs predictions and dependency plots
+- A base model class which provides basic training of timeseries models along with logging in TensorBoard
+  and generic visualizations such as actual vs predictions and dependency plots
 - Multiple neural network architectures for timeseries forecasting that have been enhanced
   for real-world deployment and come with in-built interpretation capabilities
 - Multi-horizon timeseries metrics
@@ -68,6 +68,8 @@ The documentation provides a [comparison of available models](https://pytorch-fo
 - [N-HiTS: Neural Hierarchical Interpolation for Time Series Forecasting](http://arxiv.org/abs/2201.12886) which supports covariates and has consistently beaten N-BEATS. It is also particularly well-suited for long-horizon forecasting.
 - [DeepAR: Probabilistic forecasting with autoregressive recurrent networks](https://www.sciencedirect.com/science/article/pii/S0169207019301888)
   which is the one of the most popular forecasting algorithms and is often used as a baseline
+- [PatchTST: A Time Series is Worth 64 Words](https://arxiv.org/pdf/2211.14730.pdf)
+  which achieves state-of-the-art long-term forecasting performance using Transformers with channel independence and patching
 - Simple standard networks for baselining: LSTM and GRU networks as well as a MLP on the decoder
 - A baseline model that always predicts the latest known value
 
@@ -75,7 +77,7 @@ To implement new models or other custom components, see the [How to implement ne
 
 # Usage example
 
-Networks can be trained with the [PyTorch Lighning Trainer](https://pytorch-lightning.readthedocs.io/en/latest/common/trainer.html) on [pandas Dataframes](https://pandas.pydata.org/pandas-docs/stable/user_guide/dsintro.html#dataframe) which are first converted to a [TimeSeriesDataSet](https://pytorch-forecasting.readthedocs.io/en/latest/data.html).
+Networks can be trained with the [PyTorch Lightning Trainer](https://pytorch-lightning.readthedocs.io/en/latest/common/trainer.html) on [pandas Dataframes](https://pandas.pydata.org/pandas-docs/stable/user_guide/dsintro.html#dataframe) which are first converted to a [TimeSeriesDataSet](https://pytorch-forecasting.readthedocs.io/en/latest/data.html).
 
 ```python
 # imports for training
@@ -122,7 +124,7 @@ batch_size = 128
 train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
 val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
 
-# create PyTorch Lighning Trainer with early stopping
+# create PyTorch Lightning Trainer with early stopping
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 lr_logger = LearningRateMonitor()
 trainer = pl.Trainer(

@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.metrics import Metric
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -18,12 +19,15 @@ class TslibBaseModel(BaseModel):
 
     Parameters
     ----------
-    loss : nn.Module
+    loss : Descendants of ``pytorch_forecasting.metrics.Metric`` class
         Loss function to use for training.
     logging_metrics : Optional[list[nn.Module]], optional
         list of metrics to log during training, validation, and testing.
-    optimizer : Optional[Union[Optimizer, str]], optional
+    optimizer : Optional[Union[Optimizer, str, callable]], optional
         Optimizer to use for training.
+        Can be a string ("adam", "adamw", "adagrad", "sgd", or any
+        ``torch.optim`` class name), a callable returning an optimizer,
+        or an instance of ``torch.optim.Optimizer``.
     optimizer_params : Optional[dict], optional
         Parameters for the optimizer.
     lr_scheduler : Optional[str], optional
@@ -36,13 +40,13 @@ class TslibBaseModel(BaseModel):
 
     def __init__(
         self,
-        loss: nn.Module,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        loss: Metric,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
     ):
         super().__init__(
             loss=loss,
@@ -68,24 +72,24 @@ class TslibBaseModel(BaseModel):
         self.context_length = self.metadata.get("context_length", 0)
         self.prediction_length = self.metadata.get("prediction_length", 0)
 
-        feature_indices = metadata.get("feature_indices", {})
+        feature_indices = self.metadata.get("feature_indices", {})
         self.cont_indices = feature_indices.get("continuous", [])
         self.cat_indices = feature_indices.get("categorical", [])
         self.known_indices = feature_indices.get("known", [])
         self.unknown_indices = feature_indices.get("unknown", [])
         self.target_indices = feature_indices.get("target", [])
 
-        feature_dims = metadata.get("n_features", {})
+        feature_dims = self.metadata.get("n_features", {})
         self.cont_dim = feature_dims.get("continuous", 0)
         self.cat_dim = feature_dims.get("categorical", 0)
         self.static_cat_dim = feature_dims.get("static_categorical", 0)
         self.static_cont_dim = feature_dims.get("static_continuous", 0)
         self.target_dim = feature_dims.get("target", 1)
 
-        self.feature_names = metadata.get("feature_names", {})
+        self.feature_names = self.metadata.get("feature_names", {})
 
         # feature-mode
-        self.features = metadata.get("features", "MS")
+        self.features = self.metadata.get("features", "MS")
 
     def _init_network(self):
         """
@@ -148,11 +152,12 @@ class TslibBaseModel(BaseModel):
 
     def transform_output(
         self,
-        y_hat: Union[
-            torch.Tensor, list[torch.Tensor]
+        y_hat: torch.Tensor
+        | list[
+            torch.Tensor
         ],  # evidenced from TimeXer implementation - in PR #1797  # noqa: E501
-        target_scale: Optional[dict[str, torch.Tensor]],
-    ) -> Union[torch.Tensor, list[torch.Tensor]]:
+        target_scale: dict[str, torch.Tensor] | None,
+    ) -> torch.Tensor | list[torch.Tensor]:
         """
         Transform the output of the model to the original scale.
 

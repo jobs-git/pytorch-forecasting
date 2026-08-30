@@ -60,25 +60,26 @@ class TimeXer(BaseModelWithCovariates):
         d_ff: int = 1024,
         dropout: float = 0.2,
         activation: str = "relu",
+        use_efficient_attention: bool = False,
         patch_length: int = 16,
         factor: int = 5,
         embed_type: str = "fixed",
         freq: str = "h",
-        output_size: Union[int, list[int]] = 1,
+        output_size: int | list[int] = 1,
         loss: MultiHorizonMetric = None,
         learning_rate: float = 1e-3,
-        static_categoricals: Optional[list[str]] = None,
-        static_reals: Optional[list[str]] = None,
-        time_varying_categoricals_encoder: Optional[list[str]] = None,
-        time_varying_categoricals_decoder: Optional[list[str]] = None,
-        time_varying_reals_encoder: Optional[list[str]] = None,
-        time_varying_reals_decoder: Optional[list[str]] = None,
-        x_reals: Optional[list[str]] = None,
-        x_categoricals: Optional[list[str]] = None,
-        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
-        embedding_labels: Optional[list[str]] = None,
-        embedding_paddings: Optional[list[str]] = None,
-        categorical_groups: Optional[dict[str, list[str]]] = None,
+        static_categoricals: list[str] | None = None,
+        static_reals: list[str] | None = None,
+        time_varying_categoricals_encoder: list[str] | None = None,
+        time_varying_categoricals_decoder: list[str] | None = None,
+        time_varying_reals_encoder: list[str] | None = None,
+        time_varying_reals_decoder: list[str] | None = None,
+        x_reals: list[str] | None = None,
+        x_categoricals: list[str] | None = None,
+        embedding_sizes: dict[str, tuple[int, int]] | None = None,
+        embedding_labels: list[str] | None = None,
+        embedding_paddings: list[str] | None = None,
+        categorical_groups: dict[str, list[str]] | None = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
@@ -118,6 +119,13 @@ class TimeXer(BaseModelWithCovariates):
             regularization.
         activation (str, optional): Activation function used in feedforward networks
             ('relu' or 'gelu').
+        use_efficient_attention (bool, optional): If set to True, will use
+            PyTorch's native, optimized Scaled Dot Product Attention
+            implementation which can reduce computation time and memory
+            consumption for longer sequences. PyTorch automatically selects the
+            optimal backend (FlashAttention-2, Memory-Efficient Attention, or
+            their own C++ implementation) based on user's input properties,
+            hardware capabilities, and build configuration.
         patch_length (int, optional): Length of each non-overlapping patch for
             endogenous variable tokenization.
         use_norm (bool, optional): Whether to apply normalization to input data.
@@ -214,8 +222,13 @@ class TimeXer(BaseModelWithCovariates):
         if enc_in is None:
             self.enc_in = len(self.reals)
 
-        self.n_quantiles = None
+        # NOTE: assume point prediction as default here,
+        # with single median quantile being the point prediction.
+        # hence self.n_quantiles = 1 for point predictions.
+        self.n_quantiles = 1
 
+        # set n_quantiles to the length of the quantiles list passed
+        # into the "quantiles" parameter when QuantileLoss is used.
         if isinstance(loss, QuantileLoss):
             self.n_quantiles = len(loss.quantiles)
 
@@ -258,6 +271,7 @@ class TimeXer(BaseModelWithCovariates):
                             self.hparams.factor,
                             attention_dropout=self.hparams.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.hparams.use_efficient_attention,
                         ),
                         self.hparams.hidden_size,
                         self.hparams.n_heads,
@@ -268,6 +282,7 @@ class TimeXer(BaseModelWithCovariates):
                             self.hparams.factor,
                             attention_dropout=self.hparams.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.hparams.use_efficient_attention,
                         ),
                         self.hparams.hidden_size,
                         self.hparams.n_heads,
@@ -300,14 +315,22 @@ class TimeXer(BaseModelWithCovariates):
         """
         Create model from dataset and set parameters related to covariates.
 
-        Args:
-            dataset: timeseries dataset
-            allowed_encoder_known_variable_names: list of known variables that are allowed in encoder, defaults to all
-            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+        Parameters
+        ----------
+        dataset : TimeSeriesDataSet
+            Timeseries dataset.
+        allowed_encoder_known_variable_names : list[str], optional
+            List of known variables that are allowed in encoder.
+            Defaults to all.
+        **kwargs
+            Additional arguments such as hyperparameters for model
+            (see ``__init__()``).
 
-        Returns:
-            TimeXer
-        """  # noqa: E501
+        Returns
+        -------
+        TimeXer
+            Model instance.
+        """
         new_kwargs = copy(kwargs)
         new_kwargs.update(
             {
@@ -328,8 +351,10 @@ class TimeXer(BaseModelWithCovariates):
         """
         Forecast for univariate or multivariate with single target (MS) case.
 
-        Args:
-            x: Dictionary containing entries for encoder_cat, encoder_cont
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing entries for encoder_cat, encoder_cont.
         """
         encoder_cont = x["encoder_cont"]
         encoder_time_idx = x.get("encoder_time_idx", None)
@@ -353,10 +378,7 @@ class TimeXer(BaseModelWithCovariates):
         enc_out = enc_out.permute(0, 1, 3, 2)
 
         dec_out = self.head(enc_out)
-        if self.n_quantiles is not None:
-            dec_out = dec_out.permute(0, 2, 1, 3)
-        else:
-            dec_out = dec_out.permute(0, 2, 1)
+        dec_out = dec_out.permute(0, 2, 1, 3)
 
         return dec_out
 
@@ -364,10 +386,15 @@ class TimeXer(BaseModelWithCovariates):
         """
         Forecast for multivariate with multiple targets (M) case.
 
-        Args:
-            x: Dictionary containing entries for encoder_cat, encoder_cont
-        Returns:
-            Dictionary with predictions
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing entries for encoder_cat, encoder_cont.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary with predictions.
         """
 
         encoder_cont = x["encoder_cont"]
@@ -395,19 +422,19 @@ class TimeXer(BaseModelWithCovariates):
         enc_out = enc_out.permute(0, 1, 3, 2)
 
         dec_out = self.head(enc_out)
-        if self.n_quantiles is not None:
-            dec_out = dec_out.permute(0, 2, 1, 3)
-        else:
-            dec_out = dec_out.permute(0, 2, 1)
+        dec_out = dec_out.permute(0, 2, 1, 3)
 
         return dec_out
 
     @property
     def decoder_covariate_size(self) -> int:
-        """Decoder covariates size.
+        """
+        Decoder covariates size.
 
-        Returns:
-            int: size of time-dependent covariates used by the decoder
+        Returns
+        -------
+        int
+            Size of time-dependent covariates used by the decoder.
         """
         return len(
             set(self.hparams.time_varying_reals_decoder) - set(self.target_names)
@@ -418,10 +445,13 @@ class TimeXer(BaseModelWithCovariates):
 
     @property
     def encoder_covariate_size(self) -> int:
-        """Encoder covariate size.
+        """
+        Encoder covariate size.
 
-        Returns:
-            int: size of time-dependent covariates used by the encoder
+        Returns
+        -------
+        int
+            Size of time-dependent covariates used by the encoder.
         """
         return len(
             set(self.hparams.time_varying_reals_encoder) - set(self.target_names)
@@ -432,10 +462,13 @@ class TimeXer(BaseModelWithCovariates):
 
     @property
     def static_size(self) -> int:
-        """Static covariate size.
+        """
+        Static covariate size.
 
-        Returns:
-            int: size of static covariates
+        Returns
+        -------
+        int
+            Size of static covariates.
         """
         return len(self.hparams.static_reals) + sum(
             self.embeddings.output_size[name]
@@ -446,11 +479,15 @@ class TimeXer(BaseModelWithCovariates):
         """
         Forward pass of the model.
 
-        Args:
-            x: Dictionary containing model inputs
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing model inputs.
 
-        Returns:
-            Dictionary with model outputs
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary with model outputs.
         """
         if (
             self.hparams.task_name == "long_term_forecast"
@@ -470,25 +507,15 @@ class TimeXer(BaseModelWithCovariates):
             if prediction.size(2) != len(target_positions):
                 prediction = prediction[:, :, : len(target_positions)]
 
-            # In the case of a single target, the result will be a torch.Tensor
-            # with shape (batch_size, prediction_length)
-            # In the case of multiple targets, the result will be a list of "n_targets"
-            # tensors with shape (batch_size, prediction_length)
-            # If quantile predictions are used, the result will have an additional
-            # dimension for quantiles, resulting in a shape of
-            # (batch_size, prediction_length, n_quantiles)
-            if self.n_quantiles is not None:
-                # quantile predictions.
-                if len(target_indices) == 1:
-                    prediction = prediction[..., 0, :]
-                else:
-                    prediction = [prediction[..., i, :] for i in target_indices]
+            # output format is (batch_size, prediction_length, n_quantiles)
+            # in case of quantile loss, the output n_quantiles = self.n_quantiles
+            # which is the length of a list of float. In case of MAE, MSE, etc.
+            # n_quantiles = 1 and it mimics the behavior of a point prediction.
+            # for multi-target forecasting, the output is a list of tensors.
+            if len(target_positions) == 1:
+                prediction = prediction[..., 0, :]
             else:
-                # point predictions.
-                if len(target_indices) == 1:
-                    prediction = prediction[..., 0]
-                else:
-                    prediction = [prediction[..., i] for i in target_indices]
+                prediction = [prediction[..., i, :] for i in target_indices]
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
             )

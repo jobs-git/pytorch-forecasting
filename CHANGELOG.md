@@ -1,6 +1,6 @@
 # Release Notes
 
-## v1.5.0
+## v1.8.1
 
 Feature and maintenance update.
 
@@ -13,12 +13,281 @@ Feature and maintenance update.
 * [ENH] Precompute data to massively accelerate training by ~2000% in GPU by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
 * [ENH] Added test for `TimeSeriesDataSet` when `precompute=True` by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
 * [ENH] Added test to check batch shape mismatch between precompute=True and False by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
-* [ENH] Added benchmark test to compare with and without `precompute=True` in GPU and CPU by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
 
 ### All Contributors
 
 @jobs-git
 
+## v1.8.0 and v2.0-beta-2
+release focusing on:
+- A new shared documentation for v1 and v2.0-beta
+- Bugfixes
+
+### Maintenance
+
+* [MNT] [Dependabot](deps): Bump scikit-base from 0.13.0 to 1.0.0 (#2268) @dependabot[bot]
+* [MNT] remove unused `requirements.txt` (#2274) @phoeenniixx
+* [MNT] Add version bounds to prevent installation of compromised `lightning` versions (#2278) @phoeenniixx
+* [MNT] migrate test-deps-2025 to use uv date cutoffs (#2055) @RUPESH-KUMAR01
+* [MNT] Remove unused `_get_test_datamodule_from` method from `DLinear_pkg_v2` (#2296) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump codecov/codecov-action from 6 to 7 (#2306) @dependabot[bot]
+* [MNT] add an upper bound on `matplotlib` to prevent failing notebooks (#2315) @phoeenniixx
+* [MNT] Solve the failing notebooks on main due to `matplotlib 3.11` (#2317) @phoeenniixx
+* [MNT] Fix windows CI failing on main by adding upper bound on `pytest-github-actions-annotate-failures` (#2319) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump actions/checkout from 6 to 7 (#2318) @dependabot[bot]
+* [MNT] [Dependabot](deps-dev): Update pytest-github-actions-annotate-failures requirement from <0.4.1 to <0.4.3 (#2320) @dependabot[bot]
+
+### Enhancements
+
+* [ENH] Extend v2 BaseModel with AdamW optimizer and additional LR schedulers (#2169) @StrikerEureka34
+* [ENH] Add missing tags in v2 models (#2287) @phoeenniixx
+* [ENH] Move datamodules to a single folder (#2286) @phoeenniixx
+* [ENH] auto-generate model overview table from registry tags (#2236) @IgnazioDS
+* [ENH] Add extension templates for v1 neural networks (#2285) @harshsomankar123-tech
+* [ENH] Add extension templates for `pytorch-forecasting` v2 (#2297) @phoeenniixx
+* [ENH] Add a separate documentation for `pytorch-forecasting` v1 and v2 (#2279) @phoeenniixx
+
+### Documentation
+
+* [DOC] migrate timexer model docstrings numpydoc (#2249) @vvvvvivekkk
+* [DOC] Migrate timexer sub_modules.py docstrings to NumPy style (#2248) @vvvvvivekkk
+* [DOC] Migrate samplers and KANLayer docstrings to NumPy style (#2202) @Gitanaskhan26
+
+### Fixes
+
+* [BUG] Corrected typo in `AggregationMetric.reset()` from metrics to metric (#2252) @Muhammad-Rebaal
+* [BUG] correct inverted condition for `n_plotting_samples` default in `DeepAR` (#2257) @haoyu-haoyu
+* [BUG] Fix PyTorch warning when slicing tensor with non-writable numpy arrays (#2276) @andersendsa
+* [BUG] LogNormalDistributionLoss validation error and enable integration tests (#2275) @harshsomankar123-tech
+* [BUG] Ensure writable NumPy array before tensor indexing in `decoded_index` (#2300) @cngmid
+* [BUG] Ensure deterministic groups across different processes (#2294) @fnhirwa
+* [BUG] Remove missing coverage config reference from pytest defaults (#2243) @Ajeem-git
+* [BUG] Fix TslibBaseModel crash when metadata=None (#2239) @archietyagi100-tech
+
+### All Contributors
+@Ajeem-git, @andersendsa, @archietyagi100-tech, @cngmid, @dependabot[bot], @fnhirwa, @Gitanaskhan26, @haoyu-haoyu, @harshsomankar123-tech, @IgnazioDS, @Muhammad-Rebaal, @phoeenniixx, @RUPESH-KUMAR01, @StrikerEureka34, @vvvvvivekkk
+
+
+
+## v1.7.0
+Version release focusing on:
+- `pandas 3` compatibility
+- bugfixes
+- Documentation migration to `numpy` documentation style.
+
+### Fixes
+
+* [BUG] Import issue for `SettingWithCopyWarning` fixed (#2036) @lucifer4073
+* [BUG] Remove outdated strict naming convention test in test_all_estim… (#2190) @AyushDineshRathi
+* [BUG] Fix _load_config() to support .pkl file paths (#2199) @Quant-Code-Hacker
+* [BUG] Fix logging_metrics device mismatch in BaseModelV2 (#2205) @StrikerEureka34
+* [BUG] Move prediction tensors to CPU between batches in PredictCallback (#2228) @StrikerEureka34
+
+### Documentation
+
+* [DOC] Clarify RMSE implementation and reduction logic #1541 (#2028) @Ds0uz4
+* [DOC] Add Contributor Guide (#2047) @phoeenniixx
+* [DOC] Improved Documentation (#2048) @Soham-47
+* [DOC] migration of docstrings to numpydoc style in embeddings layer (#2079) @Soham-47
+* [DOC] Improve data subpackage docstring for clarity and consistency (Closes #2092) (#2112) @vinitjain2005
+* [DOC] migrate distributions.py docstrings to numpydoc style (#2118) @Meet-Ramjiyani-10
+* [DOC] Migration of docstrings in layers/_filter to NumPydoc style (#2116) @AyushDineshRathi
+* [DOC] migrate baseline.py docstrings to numpydocstyle  (#2115) @amruth6002
+* [DOC] Migrate encoder docstrings from Google to NumPy style (#2121) @Skvmqq
+* [DOC] Convert TFT tuning and utils docstrings to numpydoc style (#2097) @Siddhazntx
+* [DOC] migrate nhits and quantile docstrings to numpydocstyle (#2111) @amruth6002
+* [DOC] Migrate AttentionLayer docstring to NumPy style (#2174) @QuantumByte-01
+* [DOC] migrate DeepAR docstrings to NumPy style (#2180) @echo-xiao
+* [DOC] Migrate SeriesDecomposition docstring to NumPy style (#2175) @QuantumByte-01
+* [DOC] Migrate docstrings in models/nn/rnn.py to numpydoc format (#2198) @sohamjadhav95
+
+### Maintenance
+
+* [MNT] `pandas 3` compatibility - test data (#2045) @fkiraly
+* [MNT] Ensure full pandas 3 compatibility (#2053) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 7 to 8 (#2101) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 6 to 7 (#2100) @dependabot[bot]
+* [MNT] Improve error message for invalid reduction argument in groupby_apply (#2104) @Gyanam1310
+* [MNT] Remove `pandas 3` warnings (#2139) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump codecov/codecov-action from 5 to 6 (#2235) @dependabot[bot]
+
+### Enhancements
+
+* [ENH] Relax naming convention in test_pkg_linkage (#2080) @PalakB09
+
+### All Contributors
+@amruth6002, @AyushDineshRathi, @dependabot[bot], @Ds0uz4, @echo-xiao, @fkiraly, @Gyanam1310, @lucifer4073, @Meet-Ramjiyani-10, @PalakB09, @phoeenniixx, @Quant-Code-Hacker, @QuantumByte-01, @Siddhazntx, @Skvmqq, @Soham-47, @sohamjadhav95, @StrikerEureka34, @vinitjain2005
+
+## v1.6.1
+Patch release focusing on:
+* Bug fix  to solve the persisting bug of passing `weights_only` in `load_from_checkpoint` for `lightning <2.6`.
+* Bug fix to non-writeable encoder issue caused by pandas copy-on-write behavior.
+
+### Fixes
+
+* [BUG] Torch doesn't support the conversion of non-writeable numpyFix non-writeable encoder issue and update tests (#1989) @cngmid
+* [BUG] Solve the persisting bug of passing `weights_only` in `load_from_checkpoint` (#2027) @phoeenniixx
+
+### Maintenance
+
+* [MNT] Add CI step with pinned dependencies as of Nov 2025 (#2029) @phoeenniixx
+
+### All Contributors
+@cngmid, @phoeenniixx
+
+## v1.6.0
+Release focusing on:
+
+* python 3.14 support
+* Solving the unpickling error in weight loading
+* Deduplicating utilities with `scikit-base` and adding it as a core dependency
+* Addition of new `predict` interface for **Beta v2**
+* Improvements to model backends
+
+
+### Highlights
+#### `pytorch-forecasting` ***v1.6.0***
+
+* Refactor N-BEATS blocks to separate KAN logic by @khenm in #2012
+* Efficient Attention Backend for TimeXer @anasashbin #1997
+
+### `pytorch-forecasting` ***Beta v2***
+
+* New `predict` interface for v2 models by @phoeenniixx in #1984
+* Efficient Attention Backend for TimeXer @anasashbin #1997
+
+### API Changes
+
+* Tuner import change due to a Lightning breaking change. Lightning v2.6 introduced a breaking change in its checkpoint loading behavior, which caused unpickling errors during weight loading in `pytorch-forecasting` (see #2000).
+To address this, `pytorch-forecasting` now provides its own `Tuner` wrapper that exposes the required `weights_only` argument when calling `lr_find()`.
+
+  * When using `pytorch-forecasting > 1.5.0` with `lightning > 2.5`, please use `pytorch_forecasting.tuning.Tuner` in place of `lightning.pytorch.tuner.Tuner`. See #2000 for details.
+
+### Maintenance
+
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 4 to 5 (#1986) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 5 to 6 (#1985) @dependabot[bot]
+* [MNT] Fix typos (#1988) @szepeviktor
+* [MNT] [Dependabot](deps): Bump actions/checkout from 5 to 6 (#1991) @dependabot[bot]
+* [MNT] Add version bound for `lightning` (#2001) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 5 to 6 (#2005) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 6 to 7 (#2006) @dependabot[bot]
+* [MNT] [Dependabot](deps): Update sphinx requirement from <8.2.4,>3.2 to >3.2,<9.1.1 (#2013) @dependabot[bot]
+* [MNT] [Dependabot](deps): Update lightning requirement from <2.6.0,>=2.0.0 to >=2.0.0,<2.7.0 (#2002) @dependabot[bot]
+* [MNT] Add python 3.14 support (#2015) @phoeenniixx
+* [MNT] Update changelog generator script to return markdown files (#2016) @phoeenniixx
+* [MNT] deduplicating utilities with `scikit-base` (#1929) @fkiraly
+* [MNT] Update `ruff` linting target version to `python 3.10` (#2017) @phoeenniixx
+
+### Enhancements
+
+* [ENH] Consistent 3D output for single-target point predictions in `TimeXer`  v1. (#1936) @PranavBhatP
+* [ENH] Efficient Attention Backend for TimeXer (#1997) @anasashb
+* [ENH] Add `predict` to v2 models (#1984) @phoeenniixx
+* [ENH] Refactor N-BEATS blocks to separate KAN logic (#2012) @khenm
+* [MNT] deduplicating utilities with `scikit-base` (#1929) @fkiraly
+
+### Fixes
+
+* [BUG] Align TimeXer v2 endogenous/exogenous usage with tslib metadata (#2009) @ahmedkansulum
+* [BUG] Solve the unpickling error in weight Loading (#2000) @phoeenniixx
+
+### Documentation
+
+* [DOC] add `CODE_OF_CONDUCT.md` and `GOVERNANCE.md` (#2014) @phoeenniixx
+
+### All Contributors
+@ahmedkansulum, @anasashb, @dependabot[bot], @fkiraly, @khenm, @phoeenniixx, @PranavBhatP, @szepeviktor, @agobbifbk
+
+## v1.5.0
+Release focusing on:
+
+* python 3.9 end-of-life
+* changes to testing framework.
+* New estimators in `pytorch-forecasting` *v1* and *beta v2*.
+
+### Highlights
+#### `pytorch-forecasting` ***v1.5.0***
+* Kolmogorov Arnold Block for `NBeats` by @Sohaib-Ahmed21 in https://github.com/sktime/pytorch-forecasting/pull/1751
+* `xLSTMTime` implementation by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1709
+
+#### `pytorch-forecasting` ***Beta v2***
+* Implementing D2 data module, tests and `TimeXer` model from `tslib`  for PTF v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1836
+* Add `DLinear` model from `tslib` for PTF v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1874
+* Add `Samformer` model for  PTF v2 from DSIPTS by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1952
+* `Tide` model in PTF v2 interface from `dsipts` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1889
+
+### Enhancements
+* [ENH] Test framework for `ptf-v2` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1841
+* [ENH] Implementing D2 data module, tests and `TimeXer` model from `tslib`  for v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1836
+* [ENH] `DLinear` model from `tslib` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1874
+* [ENH] Enable `DeprecationWarning` , `PendingDeprecationWarning` and `FutureWarning` when running pytest by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1912
+* [ENH] Suppress `__array_wrap__` warning in `numpy 2` for `torch` and `pandas` by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1911
+* [ENH] Suppress PyTorch deprecation warning: UserWarning: `nn.init.constant` is now deprecated in favor of `nn.init.constant_` by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1915
+* [ENH] two-way linkage of model package classes and neural network classes by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1888
+* [ENH] Add a copy of `BaseFixtureGenerator` to `pytorch-forecasting/tests/_base` as a true base class by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1919
+* [ENH] Remove references to model from the `BaseFixtureGenerator` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1923
+* [ENH] Improve test framework for v1 models by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1908
+* [ENH] `xLSTMTime` implementation by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1709
+* [ENH] Improve test framework for v1 metrics by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1907
+* [ENH] `Tide` model in `v2` interface by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1889
+* [ENH] docstring test suite for functions by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1955
+* [ENH] Add missing test for forward output of `TimeXer` as proposed in #1936 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1951
+* [ENH] Add `Samformer` model for  PTF v2 from DSIPTS by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1952
+* [ENH] Kolmogorov Arnold Block for NBeats by @Sohaib-Ahmed21 in https://github.com/sktime/pytorch-forecasting/pull/1751
+* [ENH] Standardize output format for `tslib` v2 models by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1965
+* [ENH] Add `Metrics` support to `ptf-v2` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1960
+* [ENH] `check_estimator` utility for checking new estimators against unified API contract by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1954
+* [ENH] Standardize testing of estimator outputs and skip tests for non-conformant estimators by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1971
+
+### Fixes
+* [BUG] Fix issue with `EncodeNormalizer(method='standard', center=False)` for scale value by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1902
+* [BUG] fixed memory leak in `TimeSeriesDataset` by using `@cached_property` and clean-up of index construction by @Vishnu-Rangiah in https://github.com/sktime/pytorch-forecasting/pull/1905
+* [BUG] Fix issue with `plot_prediction_actual_by_variable`  unsupported operand type(s) for *: 'numpy.ndarray' and 'Tensor' by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1903
+* [BUG] Correctly set lagged variables to known when lag >= horizon by @hubkrieb in https://github.com/sktime/pytorch-forecasting/pull/1910
+* [BUG] Updated base_model.py to account for importing error by @Himanshu-Verma-ds in https://github.com/sktime/pytorch-forecasting/pull/1488
+* [BUG][DOC] Fix documentation: pass loss argument to BaseModel in custom models tutorial example by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1931
+* [BUG] fix broken version inspection if package distribution has `None` name by @lohraspco in https://github.com/sktime/pytorch-forecasting/pull/1926
+* [BUG] fix sporadic `tkinter` failures in CI by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1937
+* [BUG] Device inconsistency in `MQF2DistributionLoss` raising: RuntimeError: Expected all tensors to be on the same device by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1916
+* [BUG] fixed memory leak in BaseModel by detach some tensor by @zju-ys in https://github.com/sktime/pytorch-forecasting/pull/1924
+* [BUG] Fix `TimeSeriesDataSet` wrong inferred `tensor` `dtype` when `time_idx` is included in features by @cngmid in https://github.com/sktime/pytorch-forecasting/pull/1950
+* [BUG] standardize output format of xLSTMTime estimator for point predictions by @sanskarmodi8 in https://github.com/sktime/pytorch-forecasting/pull/1978
+* [BUG] Standardize output format of NBeats and NBeatsKAN estimators by @sanskarmodi8 in https://github.com/sktime/pytorch-forecasting/pull/1977
+
+### Documentation
+* [DOC] Correct documentation for N-BEATS by @Pinaka07 in https://github.com/sktime/pytorch-forecasting/pull/1914
+* [DOC] 1.1.0 changelog - missing entries by @jdb78 in https://github.com/sktime/pytorch-forecasting/pull/1512
+* [DOC] fix minor typo in changelog by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1917
+* [DOC] Missing parenthesis in docstring of MASE by @caph1993 in https://github.com/sktime/pytorch-forecasting/pull/1944
+
+### Maintenance
+* [MNT] remove import conditionals for `python 3.6` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1928
+* [MNT] [Dependabot](deps): bump actions/download-artifact from 4 to 5 by @dependabot[bot] in https://github.com/sktime/pytorch-forecasting/pull/1939
+* [MNT] [Dependabot](deps): Bump actions/checkout from 4 to 5 by @dependabot[bot] in https://github.com/sktime/pytorch-forecasting/pull/1942
+* [MNT] Check versions in wheels workflow by @szepeviktor in https://github.com/sktime/pytorch-forecasting/pull/1948
+* [MNT] [Dependabot](deps): Bump actions/setup-python from 5 to 6 by @dependabot[bot] in https://github.com/sktime/pytorch-forecasting/pull/1963
+* [MNT] Update CODEOWNERS with current core dev state by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1972
+* [MNT] python 3.9 end-of-life by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1980
+
+### All Contributors
+@agobbifbk,
+@caph1993,
+@cngmid,
+@fkiraly,
+@fnhirwa,
+@Himanshu-Verma-ds,
+@hubkrieb,
+@jdb78,
+@lohraspco,
+@phoeenniixx,
+@Pinaka07,
+@PranavBhatP,
+@sanskarmodi8,
+@Sohaib-Ahmed21,
+@szepeviktor
+@Vishnu-Rangiah,
+@zju-ys
 
 ## v1.4.0
 
@@ -311,7 +580,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Changed
 
-- Dropping Python 3.6 suppport, adding 3.10 support (#479)
+- Dropping Python 3.6 support, adding 3.10 support (#479)
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
 - Changed transformation format for Encoders to dict from tuple (#949)
 
@@ -338,7 +607,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
 - More flexible `MultiEmbedding()` with convenience `output_size` and `input_size` properties (#829)
-- Fix concatentation of attention (#902)
+- Fix concatenation of attention (#902)
 
 ### Fixed
 
@@ -360,7 +629,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 ### Fixed
 
 - Fix inattention mutation to `x_cont` (#732).
-- Compatability with pytorch-lightning 1.5 (#758)
+- Compatibility with pytorch-lightning 1.5 (#758)
 
 ### Contributors
 
@@ -447,7 +716,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Added
 
-- Adding a filter functionality to the timeseries datasset (#329)
+- Adding a filter functionality to the timeseries dataset (#329)
 - Add simple models such as LSTM, GRU and a MLP on the decoder (#380)
 - Allow usage of any torch optimizer such as SGD (#380)
 
@@ -516,7 +785,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 ### Added
 
 - Adding support for multiple targets in the TimeSeriesDataSet (#199) and amended tutorials.
-- Temporal fusion transformer and DeepAR with support for multiple tagets (#199)
+- Temporal fusion transformer and DeepAR with support for multiple targets (#199)
 - Check for non-finite values in TimeSeriesDataSet and better validate scaler argument (#220)
 - LSTM and GRU implementations that can handle zero-length sequences (#235)
 - Helpers for implementing auto-regressive models (#236)

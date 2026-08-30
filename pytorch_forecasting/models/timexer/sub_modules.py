@@ -31,12 +31,27 @@ class TriangularCausalMask:
 class FullAttention(nn.Module):
     """
     Full attention mechanism with optional masking and dropout.
-    Args:
-        mask_flag (bool): Whether to apply masking.
-        factor (int): Factor for scaling the attention scores.
-        scale (float): Scaling factor for attention scores.
-        attention_dropout (float): Dropout rate for attention scores.
-        output_attention (bool): Whether to output attention weights."""
+
+    Parameters
+    ----------
+    mask_flag : bool
+        Whether to apply masking.
+    factor : int
+        Factor for scaling the attention scores.
+    scale : float
+        Scaling factor for attention scores.
+    attention_dropout : float
+        Dropout rate for attention scores.
+    output_attention : bool
+        Whether to output attention weights.
+    use_efficient_attention : bool
+        Whether to use PyTorch's native, optimized Scaled Dot Product Attention
+        implementation which can reduce computation time and memory consumption
+        for longer sequences. PyTorch automatically selects the optimal backend
+        (FlashAttention-2, Memory-Efficient Attention, or their own C++
+        implementation) based on user's input properties, hardware capabilities,
+        and build configuration.
+    """
 
     def __init__(
         self,
@@ -45,14 +60,35 @@ class FullAttention(nn.Module):
         scale=None,
         attention_dropout=0.1,
         output_attention=False,
+        use_efficient_attention=False,
     ):
         super().__init__()
+
+        if output_attention and use_efficient_attention:
+            raise ValueError(
+                "Cannot output attention scores using efficient attention. "
+                "Set `use_efficient_attention=False` or "
+                "`output_attention=False`."
+            )
+
         self.scale = scale
         self.mask_flag = mask_flag
         self.output_attention = output_attention
+        self.use_efficient_attention = use_efficient_attention
         self.dropout = nn.Dropout(attention_dropout)
 
     def forward(self, queries, keys, values, attn_mask, tau=None, delta=None):
+        if self.use_efficient_attention:
+            V, A = self._efficient_attention(queries, keys, values, attn_mask)
+        else:
+            V, A = self._einsum_attention(queries, keys, values, attn_mask)
+
+        if self.output_attention:
+            return V.contiguous(), A
+        else:
+            return V.contiguous(), None
+
+    def _einsum_attention(self, queries, keys, values, attn_mask):
         B, L, H, E = queries.shape
         _, S, _, D = values.shape
         scale = self.scale or 1.0 / sqrt(E)
@@ -66,23 +102,45 @@ class FullAttention(nn.Module):
         A = self.dropout(torch.softmax(scale * scores, dim=-1))
         V = torch.einsum("bhls,bshd->blhd", A, values)
 
-        if self.output_attention:
-            return V.contiguous(), A
-        else:
-            return V.contiguous(), None
+        return V, A
+
+    def _efficient_attention(self, queries, keys, values, attn_mask):
+        # SDPA expects [B, H, L, E] shape
+        queries = queries.transpose(1, 2)
+        keys = keys.transpose(1, 2)
+        values = values.transpose(1, 2)
+
+        V = nn.functional.scaled_dot_product_attention(
+            query=queries,
+            key=keys,
+            value=values,
+            attn_mask=attn_mask.mask if attn_mask is not None else None,
+            dropout_p=self.dropout.p if self.training else 0.0,
+            is_causal=self.mask_flag if attn_mask is None else False,
+            scale=self.scale,  # if == None, PyTorch computes internally
+        )
+
+        V = V.transpose(1, 2)
+
+        return V, None
 
 
 class AttentionLayer(nn.Module):
     """
-    Attention layer that combines query, key, and value projections with an attention
-    mechanism.
-    Args:
-        attention (nn.Module): Attention mechanism to use.
-        d_model (int): Dimension of the model.
-        n_heads (int): Number of attention heads.
-        d_keys (int, optional): Dimension of the keys. Defaults to d_model // n_heads.
-        d_values (int, optional):
-            Dimension of the values. Defaults to d_model // n_heads.
+    Attention layer combining query, key, and value projections with attention.
+
+    Parameters
+    ----------
+    attention : nn.Module
+        Attention mechanism to use.
+    d_model : int
+        Dimension of the model.
+    n_heads : int
+        Number of attention heads.
+    d_keys : int, optional
+        Dimension of the keys. Defaults to d_model // n_heads.
+    d_values : int, optional
+        Dimension of the values. Defaults to d_model // n_heads.
     """
 
     def __init__(self, attention, d_model, n_heads, d_keys=None, d_values=None):
@@ -123,12 +181,19 @@ class AttentionLayer(nn.Module):
 class DataEmbedding_inverted(nn.Module):
     """
     Data embedding module for time series data.
-    Args:
-        c_in (int): Number of input features.
-        d_model (int): Dimension of the model.
-        embed_type (str): Type of embedding to use. Defaults to "fixed".
-        freq (str): Frequency of the time series data. Defaults to "h".
-        dropout (float): Dropout rate. Defaults to 0.1.
+
+    Parameters
+    ----------
+    c_in : int
+        Number of input features.
+    d_model : int
+        Dimension of the model.
+    embed_type : str, optional
+        Type of embedding to use. Defaults to "fixed".
+    freq : str, optional
+        Frequency of the time series data. Defaults to "h".
+    dropout : float, optional
+        Dropout rate. Defaults to 0.1.
     """
 
     def __init__(self, c_in, d_model, embed_type="fixed", freq="h", dropout=0.1):
@@ -150,15 +215,20 @@ class DataEmbedding_inverted(nn.Module):
 class PositionalEmbedding(nn.Module):
     """
     Positional embedding module for time series data.
-    Args:
-        d_model (int): Dimension of the model.
-        max_len (int): Maximum length of the input sequence. Defaults to 5000."""
+
+    Parameters
+    ----------
+    d_model : int
+        Dimension of the model.
+    max_len : int, optional
+        Maximum length of the input sequence. Defaults to 5000.
+    """
 
     def __init__(self, d_model, max_len=5000):
         super().__init__()
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model).float()
-        pe.require_grad = False
+        pe.requires_grad = False
 
         position = torch.arange(0, max_len).float().unsqueeze(1)
         div_term = (
@@ -178,24 +248,28 @@ class PositionalEmbedding(nn.Module):
 class FlattenHead(nn.Module):
     """
     Flatten head for the output of the model.
-    Args:
-        n_vars (int): Number of input features.
-        nf (int): Number of features in the last layer.
-        target_window (int): Target window size.
-        head_dropout (float): Dropout rate for the head. Defaults to 0.
-        n_quantiles (int, optional): Number of quantiles. Defaults to None."""
 
-    def __init__(self, n_vars, nf, target_window, head_dropout=0, n_quantiles=None):
+    Parameters
+    ----------
+    n_vars : int
+        Number of input features.
+    nf : int
+        Number of features in the last layer.
+    target_window : int
+        Target window size.
+    head_dropout : float, optional
+        Dropout rate for the head. Defaults to 0.
+    n_quantiles : int, optional
+        Number of quantiles. Defaults to 1.
+    """
+
+    def __init__(self, n_vars, nf, target_window, head_dropout=0, n_quantiles=1):
         super().__init__()
         self.n_vars = n_vars
         self.flatten = nn.Flatten(start_dim=-2)
-        self.linear = nn.Linear(nf, target_window)
         self.n_quantiles = n_quantiles
 
-        if self.n_quantiles is not None:
-            self.linear = nn.Linear(nf, target_window * n_quantiles)
-        else:
-            self.linear = nn.Linear(nf, target_window)
+        self.linear = nn.Linear(nf, target_window * n_quantiles)
         self.dropout = nn.Dropout(head_dropout)
 
     def forward(self, x):
@@ -203,21 +277,28 @@ class FlattenHead(nn.Module):
         x = self.linear(x)
         x = self.dropout(x)
 
-        if self.n_quantiles is not None:
-            batch_size, n_vars = x.shape[0], x.shape[1]
-            x = x.reshape(batch_size, n_vars, -1, self.n_quantiles)
+        batch_size, n_vars = x.shape[0], x.shape[1]
+        x = x.reshape(batch_size, n_vars, -1, self.n_quantiles)
         return x
 
 
 class EnEmbedding(nn.Module):
     """
-    Encoder embedding module for time series data. Handles endogenous feature
-    embeddings in this case.
-    Args:
-        n_vars (int): Number of input features.
-        d_model (int): Dimension of the model.
-        patch_len (int): Length of the patches.
-        dropout (float): Dropout rate. Defaults to 0.1."""
+    Encoder embedding module for time series data.
+
+    Handles endogenous feature embeddings in this case.
+
+    Parameters
+    ----------
+    n_vars : int
+        Number of input features.
+    d_model : int
+        Dimension of the model.
+    patch_len : int
+        Length of the patches.
+    dropout : float, optional
+        Dropout rate. Defaults to 0.1.
+    """
 
     def __init__(self, n_vars, d_model, patch_len, dropout):
         super().__init__()
@@ -247,10 +328,15 @@ class EnEmbedding(nn.Module):
 class Encoder(nn.Module):
     """
     Encoder module for the TimeXer model.
-    Args:
-        layers (list): List of encoder layers.
-        norm_layer (nn.Module, optional): Normalization layer. Defaults to None.
-        projection (nn.Module, optional): Projection layer. Defaults to None.
+
+    Parameters
+    ----------
+    layers : list
+        List of encoder layers.
+    norm_layer : nn.Module, optional
+        Normalization layer. Defaults to None.
+    projection : nn.Module, optional
+        Projection layer. Defaults to None.
     """
 
     def __init__(self, layers, norm_layer=None, projection=None):
@@ -276,14 +362,21 @@ class Encoder(nn.Module):
 class EncoderLayer(nn.Module):
     """
     Encoder layer for the TimeXer model.
-    Args:
-        self_attention (nn.Module): Self-attention mechanism.
-        cross_attention (nn.Module): Cross-attention mechanism.
-        d_model (int): Dimension of the model.
-        d_ff (int, optional):
-            Dimension of the feedforward layer. Defaults to 4 * d_model.
-        dropout (float): Dropout rate. Defaults to 0.1.
-        activation (str): Activation function. Defaults to "relu".
+
+    Parameters
+    ----------
+    self_attention : nn.Module
+        Self-attention mechanism.
+    cross_attention : nn.Module
+        Cross-attention mechanism.
+    d_model : int
+        Dimension of the model.
+    d_ff : int, optional
+        Dimension of the feedforward layer. Defaults to 4 * d_model.
+    dropout : float, optional
+        Dropout rate. Defaults to 0.1.
+    activation : str, optional
+        Activation function. Defaults to "relu".
     """
 
     def __init__(

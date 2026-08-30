@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 import torch
 
-from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+from pytorch_forecasting.data.data_module import TslibDataModule
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -369,7 +369,7 @@ def test_create_windows(tslib_data_module):
 
 def test_dataloader_pipeline(tslib_data_module):
     """Test for a single iteration of the dataloader pipeline to
-    perform batch retrival and ensure correct data shapes and types."""
+    perform batch retrieval and ensure correct data shapes and types."""
 
     tslib_data_module.setup(stage="fit")
     train_dataloader = tslib_data_module.train_dataloader()

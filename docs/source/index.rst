@@ -6,6 +6,12 @@
 PyTorch Forecasting Documentation
 ==================================
 
+.. admonition::
+   **Try the API v2 pre-release!**
+
+   | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
+
 .. raw:: html
 
    <a class="github-button" href="https://github.com/sktime/pytorch-forecasting" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star sktime/pytorch-forecasting on GitHub">GitHub</a>
@@ -22,8 +28,8 @@ Specifically, the package provides
 
 * A timeseries dataset class which abstracts handling variable transformations, missing values,
   randomized subsampling, multiple history lengths, etc.
-* A base model class which provides basic training of timeseries models along with logging in tensorboard
-  and generic visualizations such actual vs predictions and dependency plots
+* A base model class which provides basic training of timeseries models along with logging in TensorBoard
+  and generic visualizations such as actual vs predictions and dependency plots
 * Multiple neural network architectures for timeseries forecasting that have been enhanced
   for real-world deployment and come with in-built interpretation capabilities
 * Multi-horizon timeseries metrics
@@ -52,7 +58,7 @@ To use the MQF2 loss (multivariate quantile loss), also execute
 
    pip install pytorch-forecasting[mqf2]
 
-Vist :ref:`Getting started <getting-started>` to learn more about the package and detailled installation instruction.
+Visit :ref:`Getting started <getting-started>` to learn more about the package and detailed installation instruction.
 The :ref:`Tutorials <tutorials>` section provides guidance on how to use models and implement new ones.
 
 .. toctree::
@@ -68,6 +74,7 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    faq
    installation
    api
+   model_list
    CHANGELOG
 
 

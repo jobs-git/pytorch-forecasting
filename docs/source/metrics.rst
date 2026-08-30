@@ -1,6 +1,13 @@
 Metrics
 ==========
 
+.. admonition::
+   **Try the API v2 pre-release!**
+
+   | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
+   | Note: that ``metrics`` are SAME for both the versions.
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
+
 Multiple metrics have been implemented to ease adaptation.
 
 In particular, these metrics can be applied to the multi-horizon forecasting problem, i.e.
@@ -30,7 +37,7 @@ predictions add up. For example:
 
 Here we add to MAE an additional loss. This additional loss is the MAE calculated on the mean predictions
 and actuals. We can also use other metrics such as SMAPE to ensure aggregated results are unbiased in that metric.
-One important point to keep in mind is that this metric is calculated accross samples, i.e. it will vary depending
+One important point to keep in mind is that this metric is calculated across samples, i.e. it will vary depending
 on the batch size. In particular, errors tend to average out with increased batch sizes.
 
 
@@ -41,9 +48,22 @@ See the API documentation for further details on available metrics:
 
 .. currentmodule:: pytorch_forecasting
 
-.. moduleautosummary::
-   :toctree: api
-   :template: custom-module-template.rst
-   :recursive:
+.. autosummary::
+    :toctree: api
 
-   pytorch_forecasting.metrics
+    metrics.quantile.QuantileLoss
+    metrics.point.CrossEntropy
+    metrics.point.PoissonLoss
+    metrics.point.SMAPE
+    metrics.point.MAPE
+    metrics.point.MAE
+    metrics.point.RMSE
+    metrics.point.MASE
+    metrics.point.TweedieLoss
+    metrics.distributions.NormalDistributionLoss
+    metrics.distributions.MultivariateNormalDistributionLoss
+    metrics.distributions.NegativeBinomialDistributionLoss
+    metrics.distributions.LogNormalDistributionLoss
+    metrics.distributions.BetaDistributionLoss
+    metrics.distributions.MQF2DistributionLoss
+    metrics.distributions.ImplicitQuantileNetworkDistributionLoss

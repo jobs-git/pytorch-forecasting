@@ -60,7 +60,7 @@ class DLinear(TslibBaseModel):
     Notes
     -----
     [1] This implementation supports only continuous features. Categorical variables
-        will be accomodated in future versions.
+        will be accommodated in future versions.
     """
 
     @classmethod
@@ -75,12 +75,12 @@ class DLinear(TslibBaseModel):
         loss: nn.Module,
         moving_avg: int = 25,
         individual: bool = False,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
         **kwargs: Any,
     ):
         super().__init__(
@@ -124,8 +124,8 @@ class DLinear(TslibBaseModel):
 
         self.n_quantiles = None
 
-        if isinstance(self.loss, QuantileLoss):
-            self.n_quantiles = len(self.loss.quantiles)
+        if isinstance(self._loss, QuantileLoss):
+            self.n_quantiles = len(self._loss.quantiles)
 
         output_dim = self.prediction_length
 
@@ -239,21 +239,16 @@ class DLinear(TslibBaseModel):
         Returns
         -------
         output: torch.Tensor
-            Reshaped tensor (batch_size, prediction_length, n_features, n_quantiles)
+            Reshaped tensor (batch_size, prediction_length, n_quantiles)
             or (batch_size, prediction_length, n_features) if n_quantiles is None.
         """
         if self.n_quantiles is not None:
-            batch_size, n_features = output.shape[0], output.shape[1]
+            batch_size = output.shape[0]
             output = output.reshape(
-                batch_size, n_features, self.prediction_length, self.n_quantiles
+                batch_size, self.prediction_length, self.n_quantiles
             )
-            output = output.permute(0, 2, 1, 3)  # (batch, time, features, quantiles)
         else:
             output = output.permute(0, 2, 1)  # (batch, time, features)
-
-        # univariate forecasting
-        if self.target_dim == 1 and output.shape[-1] == 1:
-            output = output.squeeze(-1)
 
         return output
 

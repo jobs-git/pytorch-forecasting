@@ -14,15 +14,20 @@ import torch.nn.functional as F
 class PositionalEmbedding(nn.Module):
     """
     Positional embedding module for time series data.
-    Args:
-        d_model (int): Dimension of the model.
-        max_len (int): Maximum length of the input sequence. Defaults to 5000."""
+
+    Parameters
+    ----------
+    d_model : int
+        Dimension of the model.
+    max_len : int
+        Maximum length of the input sequence. Defaults to 5000.
+    """
 
     def __init__(self, d_model, max_len=5000):
         super().__init__()
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model).float()
-        pe.require_grad = False
+        pe.requires_grad = False
 
         position = torch.arange(0, max_len).float().unsqueeze(1)
         div_term = (

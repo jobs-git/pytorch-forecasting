@@ -5,51 +5,81 @@
 ########################################################################################
 
 
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from warnings import warn
 
+from lightning import Trainer
 from lightning.pytorch import LightningModule
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 
+from pytorch_forecasting.callbacks.predict import PredictCallback
+from pytorch_forecasting.metrics import (
+    Metric,
+    coerce_to_pytorch_forecasting_metric,
+)
 from pytorch_forecasting.utils._classproperty import classproperty
 
 
 class BaseModel(LightningModule):
+    """Base model for time series forecasting.
+
+    Parameters
+    ----------
+    loss : Descendants of ``pytorch_forecasting.metrics.Metric`` class
+        Loss function to use for training.
+    logging_metrics : Optional[List[nn.Module]], optional
+        List of metrics to log during training, validation, and testing.
+    optimizer : Optional[Union[Optimizer, str, callable]], optional
+        Optimizer to use for training.
+        Can be a string ("adam", "adamw", "adagrad", "sgd", or any
+        ``torch.optim`` class name), a callable returning an optimizer,
+        or an instance of ``torch.optim.Optimizer``.
+    optimizer_params : Optional[Dict], optional
+        Parameters for the optimizer.
+    lr_scheduler : Optional[str], optional
+        Learning rate scheduler to use.
+        Supported values: "reduce_lr_on_plateau", "step_lr",
+        "cosine_annealing", "cosine_annealing_warm_restarts".
+    lr_scheduler_params : Optional[Dict], optional
+        Parameters for the learning rate scheduler.
+    """
+
+    _OPTIMIZER_REGISTRY = {
+        "adam": torch.optim.Adam,
+        "adamw": torch.optim.AdamW,
+        "adagrad": torch.optim.Adagrad,
+        "sgd": torch.optim.SGD,
+    }
+
+    _SCHEDULER_REGISTRY = {
+        "reduce_lr_on_plateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
+        "step_lr": torch.optim.lr_scheduler.StepLR,
+        "cosine_annealing": torch.optim.lr_scheduler.CosineAnnealingLR,
+        "cosine_annealing_warm_restarts": (
+            torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+        ),
+    }
+
     def __init__(
         self,
-        loss: nn.Module,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
+        loss: Metric | nn.Module,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
     ):
-        """
-        Base model for time series forecasting.
-
-        Parameters
-        ----------
-        loss : nn.Module
-            Loss function to use for training.
-        logging_metrics : Optional[List[nn.Module]], optional
-            List of metrics to log during training, validation, and testing.
-        optimizer : Optional[Union[Optimizer, str]], optional
-            Optimizer to use for training.
-            Can be a string ("adam", "sgd") or an instance of `torch.optim.Optimizer`.
-        optimizer_params : Optional[Dict], optional
-            Parameters for the optimizer.
-        lr_scheduler : Optional[str], optional
-            Learning rate scheduler to use.
-            Supported values: "reduce_lr_on_plateau", "step_lr".
-        lr_scheduler_params : Optional[Dict], optional
-            Parameters for the learning rate scheduler.
-        """
         super().__init__()
+
+        # wrap bare nn losses; recurse into MultiLoss children via the converter
         self.loss = loss
-        self.logging_metrics = logging_metrics if logging_metrics is not None else []
+        self.logging_metrics = nn.ModuleList(
+            logging_metrics if logging_metrics is not None else []
+        )
         self.optimizer = optimizer
         self.optimizer_params = optimizer_params if optimizer_params is not None else {}
         self.lr_scheduler = lr_scheduler
@@ -57,6 +87,9 @@ class BaseModel(LightningModule):
             lr_scheduler_params if lr_scheduler_params is not None else {}
         )
         self.model_name = self.__class__.__name__
+
+        self._loss = coerce_to_pytorch_forecasting_metric(self.loss)
+
         warn(
             f"The Model '{self.model_name}' is part of an experimental rework"
             "of the pytorch-forecasting model layer, scheduled for release with v2.0.0."
@@ -90,6 +123,69 @@ class BaseModel(LightningModule):
         """
         raise NotImplementedError("Forward method must be implemented by subclass.")
 
+    def predict(
+        self,
+        dataloader: DataLoader,
+        mode: str = "prediction",
+        return_info: list[str] | None = None,
+        mode_kwargs: dict[str, Any] = None,
+        trainer_kwargs: dict[str, Any] = None,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Generate predictions for new data using the `lightning.Trainer`.
+
+        Parameters
+        ----------
+        dataloader : DataLoader
+            The dataloader containing the data to predict on.
+        mode : str
+            The prediction mode ("prediction", "quantiles", or "raw").
+        return_info : list[str], optional
+            A list of additional information to return.
+        mode_kwargs : dict[str, Any]
+            Additional arguments for `to_prediction`/`to_quantiles`.
+        trainer_kwargs: dict[str, Any]
+            Additional arguments for `Trainer`.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            A dictionary of prediction results.
+        """
+        trainer_kwargs = trainer_kwargs or {}
+        predict_callback = PredictCallback(
+            mode=mode, return_info=return_info, mode_kwargs=mode_kwargs
+        )
+
+        callbacks = trainer_kwargs.get("callbacks", [])
+        if not isinstance(callbacks, list):
+            callbacks = [callbacks]
+        callbacks.append(predict_callback)
+        trainer_kwargs["callbacks"] = callbacks
+
+        trainer = Trainer(**trainer_kwargs)
+        trainer.predict(self, dataloaders=dataloader)
+
+        return predict_callback.result
+
+    def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
+        """Converts raw model output to point forecasts."""
+        # todo: add MultiLoss support
+        try:
+            out = self._loss.to_prediction(out["prediction"], **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            out = self._loss.to_prediction(out["prediction"])
+        return out
+
+    def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
+        """Converts raw model output to quantile forecasts."""
+        # todo: add MultiLoss support
+        try:
+            out = self._loss.to_quantiles(out["prediction"], **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            out = self._loss.to_quantiles(out["prediction"])
+        return out
+
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
@@ -111,7 +207,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._loss(y_hat, y)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
@@ -139,7 +235,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._loss(y_hat, y)
         self.log(
             "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
@@ -167,7 +263,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._loss(y_hat, y)
         self.log(
             "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
@@ -234,18 +330,22 @@ class BaseModel(LightningModule):
         Optimizer
             The optimizer instance.
         """
-        if isinstance(self.optimizer, str):
-            if self.optimizer.lower() == "adam":
-                return torch.optim.Adam(self.parameters(), **self.optimizer_params)
-            elif self.optimizer.lower() == "sgd":
-                return torch.optim.SGD(self.parameters(), **self.optimizer_params)
+        if callable(self.optimizer) and not isinstance(self.optimizer, str):
+            return self.optimizer(self.parameters(), **self.optimizer_params)
+        elif isinstance(self.optimizer, str):
+            name = self.optimizer.lower()
+            if name in self._OPTIMIZER_REGISTRY:
+                opt_cls = self._OPTIMIZER_REGISTRY[name]
+            elif hasattr(torch.optim, self.optimizer):
+                opt_cls = getattr(torch.optim, self.optimizer)
             else:
                 raise ValueError(f"Optimizer {self.optimizer} not supported.")
+            return opt_cls(self.parameters(), **self.optimizer_params)
         elif isinstance(self.optimizer, Optimizer):
             return self.optimizer
         else:
             raise ValueError(
-                "Optimizer must be either a string or "
+                "Optimizer must be a string, a callable, or "
                 "an instance of torch.optim.Optimizer."
             )
 
@@ -265,14 +365,10 @@ class BaseModel(LightningModule):
         torch.optim.lr_scheduler._LRScheduler
             The learning rate scheduler instance.
         """
-        if self.lr_scheduler.lower() == "reduce_lr_on_plateau":
-            return torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, **self.lr_scheduler_params
-            )
-        elif self.lr_scheduler.lower() == "step_lr":
-            return torch.optim.lr_scheduler.StepLR(
-                optimizer, **self.lr_scheduler_params
-            )
+        name = self.lr_scheduler.lower()
+        if name in self._SCHEDULER_REGISTRY:
+            sched_cls = self._SCHEDULER_REGISTRY[name]
+            return sched_cls(optimizer, **self.lr_scheduler_params)
         else:
             raise ValueError(f"Scheduler {self.lr_scheduler} not supported.")
 

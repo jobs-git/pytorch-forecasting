@@ -2,15 +2,22 @@
 Samformer package container.
 """
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class Samformer_pkg_v2(_BasePtForecasterV2):
+class Samformer_pkg_v2(Base_pkg):
     """Samformer package container."""
 
     _tags = {
         "info:name": "Samformer",
-        "authors": ["fbk_dsipts"],
+        "authors": ["fbk_dsipts", "PranavBhatP"],
+        "info:compute": 2,
+        "info:y_type": ["numeric"],
+        "capability:exogenous": True,
+        "capability:multivariate": False,
+        "capability:pred_int": True,
+        "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod
@@ -21,83 +28,13 @@ class Samformer_pkg_v2(_BasePtForecasterV2):
         return Samformer
 
     @classmethod
-    def _get_test_datamodule_from(cls, trainer_kwargs):
-        """Create test dataloaders from trainer_kwargs - following v1 pattern."""
+    def get_datamodule_cls(cls):
+        """Get the underlying DataModule class."""
         from pytorch_forecasting.data.data_module import (
             EncoderDecoderTimeSeriesDataModule,
         )
-        from pytorch_forecasting.tests._data_scenarios import (
-            data_with_covariates_v2,
-            make_datasets_v2,
-        )
 
-        data_with_covariates = data_with_covariates_v2()
-
-        data_loader_default_kwargs = dict(
-            target="target",
-            group_ids=["agency_encoded", "sku_encoded"],
-            add_relative_time_idx=True,
-        )
-
-        data_loader_kwargs = trainer_kwargs.get("data_loader_kwargs", {})
-        data_loader_default_kwargs.update(data_loader_kwargs)
-
-        datasets_info = make_datasets_v2(
-            data_with_covariates, **data_loader_default_kwargs
-        )
-
-        training_dataset = datasets_info["training_dataset"]
-        validation_dataset = datasets_info["validation_dataset"]
-        training_max_time_idx = datasets_info["training_max_time_idx"]
-
-        max_encoder_length = data_loader_kwargs.get("max_encoder_length", 4)
-        max_prediction_length = data_loader_kwargs.get("max_prediction_length", 3)
-        add_relative_time_idx = data_loader_kwargs.get("add_relative_time_idx", True)
-        batch_size = data_loader_kwargs.get("batch_size", 2)
-
-        train_datamodule = EncoderDecoderTimeSeriesDataModule(
-            time_series_dataset=training_dataset,
-            max_encoder_length=max_encoder_length,
-            max_prediction_length=max_prediction_length,
-            add_relative_time_idx=add_relative_time_idx,
-            batch_size=batch_size,
-            train_val_test_split=(0.8, 0.2, 0.0),
-        )
-
-        val_datamodule = EncoderDecoderTimeSeriesDataModule(
-            time_series_dataset=validation_dataset,
-            max_encoder_length=max_encoder_length,
-            max_prediction_length=max_prediction_length,
-            min_prediction_idx=training_max_time_idx,
-            add_relative_time_idx=add_relative_time_idx,
-            batch_size=batch_size,
-            train_val_test_split=(0.0, 1.0, 0.0),
-        )
-
-        test_datamodule = EncoderDecoderTimeSeriesDataModule(
-            time_series_dataset=validation_dataset,
-            max_encoder_length=max_encoder_length,
-            max_prediction_length=max_prediction_length,
-            min_prediction_idx=training_max_time_idx,
-            add_relative_time_idx=add_relative_time_idx,
-            batch_size=1,
-            train_val_test_split=(0.0, 0.0, 1.0),
-        )
-
-        train_datamodule.setup("fit")
-        val_datamodule.setup("fit")
-        test_datamodule.setup("test")
-
-        train_dataloader = train_datamodule.train_dataloader()
-        val_dataloader = val_datamodule.val_dataloader()
-        test_dataloader = test_datamodule.test_dataloader()
-
-        return {
-            "train": train_dataloader,
-            "val": val_dataloader,
-            "test": test_dataloader,
-            "data_module": train_datamodule,
-        }
+        return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
     def get_test_train_params(cls):
@@ -111,26 +48,36 @@ class Samformer_pkg_v2(_BasePtForecasterV2):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+
         import torch.nn as nn
 
         from pytorch_forecasting.metrics import QuantileLoss
 
-        return [
+        params = [
             {
                 "loss": nn.MSELoss(),
                 "hidden_size": 32,
                 "use_revin": False,
             },
             {
-                "loss": nn.MSELoss(),
                 "hidden_size": 16,
                 "use_revin": True,
                 "out_channels": 1,
                 "persistence_weight": 0.0,
             },
-            # {
-            #     "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
-            #     "hidden_size": 32,
-            #     "use_revin": False,
-            # },
+            {
+                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+                "hidden_size": 32,
+                "use_revin": False,
+            },
         ]
+
+        default_dm_cfg = {"max_encoder_length": 4, "max_prediction_length": 3}
+
+        for param in params:
+            current_dm_cfg = param.get("datamodule_cfg", {})
+            default_dm_cfg.update(current_dm_cfg)
+
+            param["datamodule_cfg"] = default_dm_cfg
+
+        return params

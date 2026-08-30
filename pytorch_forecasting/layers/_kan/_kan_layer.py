@@ -30,10 +30,10 @@ class KANLayer(nn.Module):
     noise_scale : float
         the scale of noise injected at initialization. Default: 0.1.
     scale_base_mu : float
-        the scale of the residual function b(x) is intialized to be
+        the scale of the residual function b(x) is initialized to be
         N(scale_base_mu, scale_base_sigma^2).
     scale_base_sigma : float
-        the scale of the residual function b(x) is intialized to be
+        the scale of the residual function b(x) is initialized to be
         N(scale_base_mu, scale_base_sigma^2).
     scale_sp : float
         the scale of the base function spline(x).
@@ -140,23 +140,23 @@ class KANLayer(nn.Module):
 
     def forward(self, x):
         """
-        KANLayer forward given input x
+        KANLayer forward given input x.
 
         Parameters
-        -----
+        ----------
         x : torch.Tensor
             Input tensor of shape (batch_size, in_dim), where:
               - batch_size is the number of input samples.
               - in_dim is the input feature dimension.
 
         Returns
-        --------
+        ----------
         y : torch.Tensor
             Output tensor, the result of applying spline and residual
             transformations followed by weighted summation.
 
         Examples
-        --------
+        ----------
         The following is an example from the original `pykan` library, adapted here
         for illustration within the PyTorch Forecasting integration.
 
@@ -183,19 +183,21 @@ class KANLayer(nn.Module):
 
     def update_grid_from_samples(self, x):
         """
-        Update grid from samples
+        Update grid from samples.
 
         Parameters
-        -----
-        x : 2D torch.float
-            inputs, shape (number of samples, input dimension)
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, in_dim), where:
+              - batch_size is the number of input samples.
+              - in_dim is the input feature dimension.
 
-        Returns:
-        --------
+        Returns
+        ----------
         None
 
         Examples
-        -------
+        ----------
         >>> model = KANLayer(in_dim=1, out_dim=1, num=5, k=3)
         >>> print(model.grid.data)
         >>> x = torch.linspace(-3,3,steps=100)[:,None]
@@ -213,12 +215,12 @@ class KANLayer(nn.Module):
             Generate adaptive or uniform grid points from sorted input samples.
 
             Parameters
-            -----
+            ----------
             num_interval : int
                 Number of intervals between grid points.
 
-            Returns:
-            --------
+            Returns
+            ----------
             grid : torch.Tensor
                 New grid of shape (in_dim, num_interval + 1).
             """
